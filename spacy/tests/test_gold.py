@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from spacy.gold import biluo_tags_from_offsets, offsets_from_biluo_tags
 from spacy.gold import spans_from_biluo_tags, GoldParse, iob_to_biluo
 from spacy.gold import GoldCorpus, docs_to_json, align
+import spacy.gold
 from spacy.lang.en import English
 from spacy.tokens import Doc
 from .util import make_tempdir
@@ -177,8 +178,13 @@ def test_roundtrip_docs_to_json():
     assert cats["BAKING"] == goldparse.cats["BAKING"]
 
 
-# xfail while we have backwards-compatible alignment
-@pytest.mark.xfail
+@pytest.fixture
+def use_new_align():
+    spacy.gold.USE_NEW_ALIGN = True
+    yield
+    spacy.gold.USE_NEW_ALIGN = False
+
+
 @pytest.mark.parametrize(
     "tokens_a,tokens_b,expected",
     [
@@ -200,9 +206,10 @@ def test_roundtrip_docs_to_json():
             (3, [0, 1, -1], [0, 1, -1, -1], {}, {2: 2, 3: 2}),
         ),
         ([" ", "a"], ["a"], (1, [-1, 0], [1], {}, {})),
+        (["'", "a"], ["a"], (1, [-1, 0], [1], {}, {})),
     ],
 )
-def test_align(tokens_a, tokens_b, expected):
+def test_align(tokens_a, tokens_b, expected, use_new_align):
     cost, a2b, b2a, a2b_multi, b2a_multi = align(tokens_a, tokens_b)
     assert (cost, list(a2b), list(b2a), a2b_multi, b2a_multi) == expected
     # check symmetry
